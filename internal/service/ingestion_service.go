@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/joaovictornovais/logiscale/internal/domain"
+	"github.com/redis/go-redis/v9"
 )
 
 type LocationRepository interface {
@@ -14,6 +17,7 @@ type LocationRepository interface {
 
 type IngestionService struct {
 	repo          LocationRepository
+	redis         *redis.Client
 	locationQueue chan domain.LocationPayload
 	wg            sync.WaitGroup
 }
@@ -23,11 +27,12 @@ const (
 	QueueSize   = 1000
 )
 
-func NewIngestionService(repo LocationRepository) *IngestionService {
+func NewIngestionService(repo LocationRepository, redisClient *redis.Client) *IngestionService {
 	queue := make(chan domain.LocationPayload, QueueSize)
 
 	s := &IngestionService{
 		repo:          repo,
+		redis:         redisClient,
 		locationQueue: queue,
 	}
 
@@ -50,9 +55,16 @@ func (s *IngestionService) worker(id int) {
 	for loc := range s.locationQueue {
 		ctx := context.Background()
 
-		err := s.repo.SaveLocation(ctx, loc)
+		key := fmt.Sprintf("driver:%s:last_loc", loc.DriverID)
+		val := fmt.Sprintf("%f,%f", loc.Lat, loc.Lng)
+
+		err := s.redis.Set(ctx, key, val, time.Hour).Err()
 		if err != nil {
-			log.Printf("[Worker %d] error while trying to save driver's location %s: %v", id, loc.DriverID, err)
+			log.Printf("[Worker %d] error while trying to save driver's location on redis %s: %v", id, loc.DriverID, err)
+		}
+
+		if err := s.repo.SaveLocation(ctx, loc); err != nil {
+			log.Printf("[Worker %d] error while trying to save driver's location on postgres %s: %v", id, loc.DriverID, err)
 		}
 	}
 	log.Printf("Worker %d has stopped", id)

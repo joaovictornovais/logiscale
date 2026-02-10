@@ -14,6 +14,7 @@ import (
 	repository "github.com/joaovictornovais/logiscale/internal/repository/postgres"
 	"github.com/joaovictornovais/logiscale/internal/service"
 	pgPkg "github.com/joaovictornovais/logiscale/pkg/postgres"
+	"github.com/joaovictornovais/logiscale/pkg/redis"
 )
 
 func main() {
@@ -21,6 +22,13 @@ func main() {
 
 	ctx := context.Background()
 	pool, err := pgPkg.NewClient(ctx, os.Getenv("DATABASE_URL"))
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPort := os.Getenv("REDIS_PORT")
+	rdb, err := redis.NewClient(redisHost + ":" + redisPort)
+	if err != nil {
+		log.Fatalf("error while connecting to redis: %v", err)
+	}
+	defer rdb.Close()
 
 	if err != nil {
 		log.Fatalf("Could not connect to DB: %v", err)
@@ -32,7 +40,7 @@ func main() {
 	driverHandler := handler.NewDriverHandler(driverService)
 
 	locationRepo := repository.NewLocationRepository(pool)
-	ingestionService := service.NewIngestionService(locationRepo)
+	ingestionService := service.NewIngestionService(locationRepo, rdb)
 	ingestionHandler := handler.NewIngestionHandler(ingestionService)
 
 	defer ingestionService.Close()
