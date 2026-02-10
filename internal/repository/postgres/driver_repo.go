@@ -16,7 +16,29 @@ func NewDriverRepository(db *pgxpool.Pool) *DriverRepository {
 	return &DriverRepository{db: db}
 }
 
-func (r *DriverRepository) GetDriverById(ctx context.Context, id string) (*domain.Driver, error) {
+func (r *DriverRepository) CreateDriver(ctx context.Context, driver *domain.Driver) error {
+	query := `
+		INSERT INTO drivers (name, license, created_at) 
+		VALUES ($1, $2, $3) 
+		RETURNING id
+	`
+
+	err := r.db.QueryRow(
+		ctx,
+		query,
+		driver.Name,
+		driver.License,
+		driver.CreatedAt,
+	).Scan(&driver.ID)
+
+	if err != nil {
+		return fmt.Errorf("error while inserting driver: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DriverRepository) GetDriverByID(ctx context.Context, id string) (*domain.Driver, error) {
 	query := `SELECT id, name, license, created_at FROM drivers WHERE id = $1`
 
 	row := r.db.QueryRow(ctx, query, id)

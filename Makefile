@@ -19,3 +19,14 @@ logs:
 # Roda a aplicação Go
 run:
 	go run cmd/api/main.go
+
+DB_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?sslmode=disable
+
+migrate-create:
+	migrate create -ext sql -dir migrations -seq $(name)
+
+migrate-up:
+	migrate -path migrations -database "${DB_URL}" -verbose up
+
+migrate-down:
+	migrate -path migrations -database "${DB_URL}" -verbose down

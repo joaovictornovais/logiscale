@@ -8,6 +8,7 @@ import (
 var (
 	ErrDriverNotFound = errors.New("driver not found")
 	ErrInvalidCoord   = errors.New("invalid coordinates")
+	ErrInvalidInput   = errors.New("invalid driver data")
 )
 
 type Driver struct {

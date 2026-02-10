@@ -8,23 +8,30 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/joaovictornovais/logiscale/pkg/postgres"
+	"github.com/joho/godotenv"
+
+	"github.com/joaovictornovais/logiscale/internal/handler"
+	repository "github.com/joaovictornovais/logiscale/internal/repository/postgres"
+	"github.com/joaovictornovais/logiscale/internal/service"
+	pgPkg "github.com/joaovictornovais/logiscale/pkg/postgres"
 )
 
 func main() {
-	connStr := os.Getenv("DATABASE_URL")
+	_ = godotenv.Load()
 
 	ctx := context.Background()
-	pool, err := postgres.NewClient(ctx, connStr)
+	pool, err := pgPkg.NewClient(ctx, os.Getenv("DATABASE_URL"))
 
 	if err != nil {
-		panic(err)
+		log.Fatalf("Could not connect to DB: %v", err)
 	}
-
 	defer pool.Close()
 
-	r := chi.NewRouter()
+	driverRepo := repository.NewDriverRepository(pool)
+	driverService := service.NewDriverService(driverRepo)
+	driverHandler := handler.NewDriverHandler(driverService)
 
+	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
@@ -32,7 +39,13 @@ func main() {
 		w.Write([]byte("LogiScale is running!"))
 	})
 
+	r.Post("/drivers", driverHandler.CreateDriver)
+	r.Get("/drivers/{id}", driverHandler.GetByID)
+
 	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
 	log.Println("Server starting on port " + port)
 	http.ListenAndServe(":"+port, r)
