@@ -32,3 +32,10 @@ type RouteResult struct {
 	EstimatedTime int
 	PathPoints    []string
 }
+
+type LocationPayload struct {
+	DriverID string    `json:"driver_id"`
+	Lat      float64   `json:"lat"`
+	Lng      float64   `json:"lng"`
+	SentAt   time.Time `json:"sent_at"`
+}

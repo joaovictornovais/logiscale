@@ -30,3 +30,9 @@ migrate-up:
 
 migrate-down:
 	migrate -path migrations -database "${DB_URL}" -verbose down
+
+migrate-version:
+	migrate -path migrations -database "${DB_URL}" version
+
+migrate-force:
+	migrate -path migrations -database "${DB_URL}" force $(version)

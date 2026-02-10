@@ -31,6 +31,12 @@ func main() {
 	driverService := service.NewDriverService(driverRepo)
 	driverHandler := handler.NewDriverHandler(driverService)
 
+	locationRepo := repository.NewLocationRepository(pool)
+	ingestionService := service.NewIngestionService(locationRepo)
+	ingestionHandler := handler.NewIngestionHandler(ingestionService)
+
+	defer ingestionService.Close()
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -41,6 +47,7 @@ func main() {
 
 	r.Post("/drivers", driverHandler.CreateDriver)
 	r.Get("/drivers/{id}", driverHandler.GetByID)
+	r.Post("/drivers/{id}/locations", ingestionHandler.HandleIngest)
 
 	port := os.Getenv("PORT")
 	if port == "" {
