@@ -79,3 +79,8 @@ func (s *IngestionService) Close() {
 	close(s.locationQueue)
 	s.wg.Wait()
 }
+
+func (s *IngestionService) Shutdown() {
+	close(s.locationQueue)
+	s.wg.Wait()
+}
