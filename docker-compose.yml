@@ -1,6 +1,15 @@
-version: '3.8'
-
 services:
+  api:
+    image: logiscale
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - logiscale-net
+
   postgres:
     image: postgres:16-alpine
     container_name: logiscale-postgres
