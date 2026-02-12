@@ -2,10 +2,8 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/joaovictornovais/logiscale/internal/domain"
 	"github.com/redis/go-redis/v9"
@@ -55,12 +53,15 @@ func (s *IngestionService) worker(id int) {
 	for loc := range s.locationQueue {
 		ctx := context.Background()
 
-		key := fmt.Sprintf("driver:%s:last_loc", loc.DriverID)
-		val := fmt.Sprintf("%f,%f", loc.Lat, loc.Lng)
+		key := "drivers:locations"
+		err := s.redis.GeoAdd(ctx, key, &redis.GeoLocation{
+			Name:      loc.DriverID,
+			Longitude: loc.Lng,
+			Latitude:  loc.Lat,
+		}).Err()
 
-		err := s.redis.Set(ctx, key, val, time.Hour).Err()
 		if err != nil {
-			log.Printf("[Worker %d] error while trying to save driver's location on redis %s: %v", id, loc.DriverID, err)
+			log.Printf("[Worker %d] error on regis geoadd: %v", id, err)
 		}
 
 		if err := s.repo.SaveLocation(ctx, loc); err != nil {

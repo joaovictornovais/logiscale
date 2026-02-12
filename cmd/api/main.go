@@ -22,6 +22,9 @@ func main() {
 
 	ctx := context.Background()
 	pool, err := pgPkg.NewClient(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatalf("Could not connect to DB: %v", err)
+	}
 	redisHost := os.Getenv("REDIS_HOST")
 	redisPort := os.Getenv("REDIS_PORT")
 	rdb, err := redis.NewClient(redisHost + ":" + redisPort)
@@ -29,10 +32,6 @@ func main() {
 		log.Fatalf("error while connecting to redis: %v", err)
 	}
 	defer rdb.Close()
-
-	if err != nil {
-		log.Fatalf("Could not connect to DB: %v", err)
-	}
 	defer pool.Close()
 
 	driverRepo := repository.NewDriverRepository(pool)
@@ -42,6 +41,9 @@ func main() {
 	locationRepo := repository.NewLocationRepository(pool)
 	ingestionService := service.NewIngestionService(locationRepo, rdb)
 	ingestionHandler := handler.NewIngestionHandler(ingestionService)
+
+	dispatchService := service.NewDispatchService(rdb)
+	dispatchHandler := handler.NewDispatchHandler(dispatchService)
 
 	defer ingestionService.Close()
 
@@ -56,6 +58,8 @@ func main() {
 	r.Post("/drivers", driverHandler.CreateDriver)
 	r.Get("/drivers/{id}", driverHandler.GetByID)
 	r.Post("/drivers/{id}/locations", ingestionHandler.HandleIngest)
+
+	r.Get("/drivers/nearest", dispatchHandler.FindNearest)
 
 	port := os.Getenv("PORT")
 	if port == "" {
